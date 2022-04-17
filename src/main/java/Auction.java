@@ -38,13 +38,18 @@ public class Auction implements AutoCloseable {
     }
 
     public boolean propose(Bid bid) {
-        Bid currentBid;
-        do {
+        Bid currentBid = latestBid.get();
+        if (currentBid != null && bid.price <= currentBid.price) {
+            return false;
+        }
+
+        synchronized (latestBid) {
             currentBid = latestBid.get();
             if (currentBid != null && bid.price <= currentBid.price) {
                 return false;
             }
-        } while (!latestBid.compareAndSet(currentBid, bid));
+            latestBid.set(bid);
+        }
 
         sendNotificationAsync(currentBid);
 
