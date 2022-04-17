@@ -28,19 +28,26 @@ public class StoppableAuction implements AutoCloseable {
     }
 
     private final AtomicReference<Bid> latestBid;
-    private volatile boolean auctionStopped;
     private final Notifier notifier;
     private final ExecutorService notificationSenderExecutor;
+    private final Object lock;
+
+    private boolean auctionStopped;
 
     public StoppableAuction() {
         latestBid = new AtomicReference<>();
         notifier = new Notifier();
         notificationSenderExecutor = Executors.newFixedThreadPool(100);
+        lock = new Object();
     }
 
     public boolean propose(Bid bid) {
-        Bid currentBid;
-        do {
+        Bid currentBid = latestBid.get();
+        if (currentBid != null && bid.price <= currentBid.price) {
+            return false;
+        }
+
+        synchronized (lock) {
             if (auctionStopped) {
                 return false;
             }
@@ -48,7 +55,8 @@ public class StoppableAuction implements AutoCloseable {
             if (currentBid != null && bid.price <= currentBid.price) {
                 return false;
             }
-        } while (!latestBid.compareAndSet(currentBid, bid));
+            latestBid.set(bid);
+        }
 
         sendNotificationAsync(currentBid);
 
@@ -67,7 +75,9 @@ public class StoppableAuction implements AutoCloseable {
     }
 
     public void stopAuction() {
-        auctionStopped = true;
+        synchronized (lock) {
+            auctionStopped = true;
+        }
     }
 
     @Override
