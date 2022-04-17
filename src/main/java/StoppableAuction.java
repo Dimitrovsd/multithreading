@@ -39,11 +39,11 @@ public class StoppableAuction implements AutoCloseable {
     }
 
     public boolean propose(Bid bid) {
-        if (auctionStopped) {
-            return false;
-        }
         Bid currentBid;
         do {
+            if (auctionStopped) {
+                return false;
+            }
             currentBid = latestBid.get();
             if (currentBid != null && bid.price <= currentBid.price) {
                 return false;
