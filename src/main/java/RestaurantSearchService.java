@@ -19,8 +19,11 @@ public class RestaurantSearchService {
     }
 
     private void addToStat(String restaurantName) {
-        stat.computeIfAbsent(restaurantName, rn -> new LongAdder())
-                .increment();
+        var counter = stat.get(restaurantName);
+        if (counter == null) {
+            counter = stat.computeIfAbsent(restaurantName, rn -> new LongAdder());
+        }
+        counter.increment();
     }
 
     public Set<String> printStat() {
